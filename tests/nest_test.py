@@ -87,6 +87,14 @@ class NestTest(unittest.TestCase):
             asyncio.gather(f1(), f2()))
         self.assertEqual(result, [4, 2])
 
+    def test_done_callbacks_run_before_nested_loop_returns(self):
+        callbacks = []
+        task = self.loop.create_task(self.coro())
+        task.add_done_callback(lambda completed: callbacks.append(completed.result()))
+
+        self.assertEqual(self.loop.run_until_complete(task), 42)
+        self.assertEqual(callbacks, [42])
+
     @unittest.skipIf(sys.version_info < (3, 7, 0), 'No contextvars module')
     def test_contextvars(self):
         from contextvars import ContextVar

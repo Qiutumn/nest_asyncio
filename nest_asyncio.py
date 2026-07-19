@@ -102,6 +102,14 @@ def _patch_loop(loop):
             if not f.done():
                 raise RuntimeError(
                     'Event loop stopped before Future completed.')
+
+            # Task completion queues done callbacks with call_soon(). Process
+            # that ready queue before returning so callers can safely inspect
+            # state maintained by those callbacks (for example, Jupyter's
+            # kernel-ready future).
+            if self._ready:
+                self._run_once()
+
             return f.result()
 
     def _run_once(self):
