@@ -16,6 +16,14 @@ GUI applications and in Jupyter notebooks.
 This module patches asyncio to allow nested use of ``asyncio.run`` and
 ``loop.run_until_complete``.
 
+Python compatibility
+--------------------
+
+This fork keeps the original ``nest_asyncio`` module and distribution names
+and adds support for Python 3.13 and 3.14. In particular, it preserves
+Python 3.14's C task implementation and uses ``_swap_current_task`` while a
+nested loop is running.
+
 Installation
 ------------
 
@@ -58,4 +66,3 @@ generally can't be patched.
 .. |Downloads| image:: https://static.pepy.tech/badge/nest-asyncio/month
    :alt: Number of downloads
    :target: https://pepy.tech/project/nest-asyncio
-

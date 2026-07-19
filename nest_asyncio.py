@@ -43,7 +43,9 @@ def _patch_asyncio():
     # Use module level _current_tasks, all_tasks and patch run method.
     if hasattr(asyncio, '_nest_patched'):
         return
-    if sys.version_info >= (3, 6, 0):
+    # Python 3.14 tracks C and Python tasks separately. Replacing Task with
+    # _PyTask breaks current_task(), asyncio.timeout(), and Tornado callbacks.
+    if (3, 6, 0) <= sys.version_info < (3, 14, 0):
         asyncio.Task = asyncio.tasks._CTask = asyncio.tasks.Task = \
             asyncio.tasks._PyTask
         asyncio.Future = asyncio.futures._CFuture = asyncio.futures.Future = \
@@ -51,7 +53,7 @@ def _patch_asyncio():
     if sys.version_info < (3, 7, 0):
         asyncio.tasks._current_tasks = asyncio.tasks.Task._current_tasks
         asyncio.all_tasks = asyncio.tasks.Task.all_tasks
-    if sys.version_info >= (3, 9, 0):
+    if (3, 9, 0) <= sys.version_info < (3, 14, 0):
         events._get_event_loop = events.get_event_loop = \
             asyncio.get_event_loop = _get_event_loop
     asyncio.run = run
@@ -60,6 +62,11 @@ def _patch_asyncio():
 
 def _patch_policy():
     """Patch the policy to always return a patched loop."""
+
+    # get_event_loop() no longer creates a loop on Python 3.14, and the policy
+    # API is deprecated. Explicit loops are patched by apply() instead.
+    if sys.version_info >= (3, 14, 0):
+        return
 
     def get_event_loop(self):
         if self._local._loop is None:
@@ -127,14 +134,23 @@ def _patch_loop(loop):
             if not handle._cancelled:
                 # preempt the current task so that that checks in
                 # Task.__step do not raise
-                curr_task = curr_tasks.pop(self, None)
+                if sys.version_info < (3, 14, 0):
+                    curr_task = curr_tasks.pop(self, None)
+                else:
+                    try:
+                        curr_task = asyncio.tasks._swap_current_task(self, None)
+                    except KeyError:
+                        curr_task = None
 
                 try:
                     handle._run()
                 finally:
                     # restore the current task
                     if curr_task is not None:
-                        curr_tasks[self] = curr_task
+                        if sys.version_info < (3, 14, 0):
+                            curr_tasks[self] = curr_task
+                        else:
+                            asyncio.tasks._swap_current_task(self, curr_task)
 
         handle = None
 
