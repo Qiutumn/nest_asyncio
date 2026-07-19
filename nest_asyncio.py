@@ -146,7 +146,8 @@ def _patch_loop(loop):
                     curr_task = curr_tasks.pop(self, None)
                 else:
                     try:
-                        curr_task = asyncio.tasks._swap_current_task(self, None)
+                        curr_task = asyncio.tasks._swap_current_task(
+                            self, None)
                     except KeyError:
                         curr_task = None
 
